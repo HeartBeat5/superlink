@@ -1,692 +1,697 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>五子棋 - 经典对弈</title>
-  <!-- 引入外部资源 -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-  
-  <!-- 配置Tailwind -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#8B5A2B',      // 主色调：木质棕色
-            secondary: '#D2B48C',    // 辅助色：浅棕色
-            accent: '#A0522D',       // 强调色：深棕色
-            board: '#DEB887',        // 棋盘颜色
-            black: '#000000',        // 黑棋
-            white: '#FFFFFF',        // 白棋
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-          },
-          boxShadow: {
-            'piece': '0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2)',
-            'board': '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1)',
-          }
-        },
-      }
-    }
-  </script>
-  
-  <!-- 自定义工具类 -->
-  <style type="text/tailwindcss">
-    @layer utilities {
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>为了共同的未来 - 减少碳排放</title>
+    <!-- 外部资源 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0F766E',    // 深绿色 - 代表可持续发展
+                        secondary: '#0369A1',  // 蓝色 - 代表地球与清洁
+                        accent: '#F59E0B',     // 橙色 - 代表警示与行动
+                        dark: '#1E293B',       // 深色文本
+                        light: '#F8FAFC',      // 浅色背景
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        display: ['Montserrat', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
       .content-auto {
         content-visibility: auto;
       }
-      .wood-pattern {
-        background-image: url('https://picsum.photos/id/129/1000/1000');
-        background-size: cover;
-        background-position: center;
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
       }
-      .board-texture {
-        background-color: theme('colors.board');
-        background-image: 
-          linear-gradient(rgba(139, 90, 43, 0.1) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(139, 90, 43, 0.1) 1px, transparent 1px);
+      .animate-float {
+        animation: float 6s ease-in-out infinite;
       }
-      .piece-transition {
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+      .animate-pulse-slow {
+        animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
       }
-      .piece-hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.4);
+      .bg-gradient-hero {
+        background: linear-gradient(135deg, rgba(3, 105, 161, 0.9), rgba(15, 118, 110, 0.9));
       }
-    }
-  </style>
-  
-  <style>
-    /* 基础样式 */
-    body {
-      overflow-x: hidden;
-      touch-action: manipulation;
-    }
-    
-    /* 棋盘格子样式 */
-    .grid-cell {
-      position: relative;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    
-    .grid-cell:hover:not(.has-piece) {
-      background-color: rgba(139, 90, 43, 0.2);
-    }
-    
-    /* 棋子样式 */
-    .piece {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      box-shadow: theme('boxShadow.piece');
-      transition: all 0.3s ease;
-    }
-    
-    .piece.black {
-      background: radial-gradient(circle at 30% 30%, #333, #000);
-    }
-    
-    .piece.white {
-      background: radial-gradient(circle at 30% 30%, #fff, #ddd);
-      border: 1px solid #ccc;
-    }
-    
-    /* 胜利动画 */
-    @keyframes pulse {
-      0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-      50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
-      100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-    }
-    
-    .winning-piece {
-      animation: pulse 1s infinite;
-    }
-    
-    /* 棋盘标记点 */
-    .board-mark {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      background-color: #000;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-    
-    /* 模态框动画 */
-    .modal-enter {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
-    
-    .modal-enter-active {
-      opacity: 1;
-      transform: translateY(0);
-      transition: opacity 300ms, transform 300ms;
-    }
-    
-    /* 响应式棋盘尺寸调整 */
-    @media (max-width: 640px) {
-      .board-container {
-        width: 90vw !important;
-        height: 90vw !important;
+      .scroll-indicator {
+        height: 3px;
+        background-color: theme('colors.accent');
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 50;
+        width: 0%;
       }
     }
   </style>
+
+    <style>
+        /* 基础动画 */
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        /* 平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* 地球动画 */
+        .earth-rotate {
+            animation: rotate 20s linear infinite;
+            transform-origin: center;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 进度条动画 */
+        .progress-bar {
+            transition: width 1.5s ease-in-out;
+        }
+
+        /* 数字计数动画 */
+        .counter {
+            transition: all 0.8s ease-out;
+        }
+
+        /* 卡片悬停效果 */
+        .action-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* 导航栏滚动效果 */
+        .navbar-scrolled {
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
 
-<body class="bg-gray-100 min-h-screen font-sans">
-  <!-- 页面头部 -->
-  <header class="bg-primary text-white shadow-md">
-    <div class="container mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center">
-      <div class="flex items-center mb-4 md:mb-0">
-        <i class="fa fa-gamepad text-3xl mr-3"></i>
-        <h1 class="text-2xl md:text-3xl font-bold">五子棋</h1>
-      </div>
-      <nav>
-        <ul class="flex space-x-6">
-          <li><a href="#" class="hover:text-secondary transition-colors duration-300 flex items-center"><i class="fa fa-home mr-1"></i> 首页</a></li>
-          <li><a href="#" class="hover:text-secondary transition-colors duration-300 flex items-center"><i class="fa fa-book mr-1"></i> 规则</a></li>
-          <li><a href="#" class="hover:text-secondary transition-colors duration-300 flex items-center"><i class="fa fa-trophy mr-1"></i> 排行榜</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+<body class="font-sans text-dark bg-light">
+    <!-- 滚动进度指示器 -->
+    <div id="scrollIndicator" class="scroll-indicator"></div>
 
-  <!-- 主要内容区 -->
-  <main class="container mx-auto px-4 py-8">
-    <div class="flex flex-col lg:flex-row gap-8 items-center lg:items-start justify-center">
-      <!-- 游戏信息面板 -->
-      <div class="w-full lg:w-64 bg-white rounded-xl shadow-lg p-6 order-2 lg:order-1">
-        <h2 class="text-xl font-bold text-primary mb-4 flex items-center">
-          <i class="fa fa-info-circle mr-2"></i>游戏信息
-        </h2>
-        
-        <!-- 当前玩家 -->
-        <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 class="font-semibold text-gray-700 mb-2">当前回合</h3>
-          <div class="flex items-center">
-            <div id="current-player-indicator" class="w-6 h-6 rounded-full bg-black mr-3"></div>
-            <span id="current-player-text" class="font-medium">黑方行棋</span>
-          </div>
-        </div>
-        
-        <!-- 游戏状态 -->
-        <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 class="font-semibold text-gray-700 mb-2">游戏状态</h3>
-          <p id="game-status" class="text-green-600 font-medium">游戏进行中</p>
-        </div>
-        
-        <!-- 统计信息 -->
-        <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <h3 class="font-semibold text-gray-700 mb-2">统计</h3>
-          <div class="grid grid-cols-2 gap-2">
-            <div class="flex items-center">
-              <div class="w-4 h-4 rounded-full bg-black mr-2"></div>
-              <span>黑棋: <span id="black-count">0</span></span>
+    <!-- 导航栏 -->
+    <nav id="navbar" class="fixed w-full z-40 transition-all duration-300 py-4">
+        <div class="container mx-auto px-4 md:px-6 flex justify-between items-center">
+            <a href="#" class="flex items-center space-x-2">
+                <i class="fa fa-globe text-2xl text-primary"></i>
+                <span class="text-xl font-bold text-white text-shadow">减碳行动</span>
+            </a>
+
+            <!-- 桌面导航 -->
+            <div class="hidden md:flex items-center space-x-8">
+                <a href="#facts" class="text-white hover:text-accent transition-colors font-medium">事实数据</a>
+                <a href="#impact" class="text-white hover:text-accent transition-colors font-medium">环境影响</a>
+                <a href="#actions" class="text-white hover:text-accent transition-colors font-medium">行动指南</a>
+                <a href="#join" class="text-white hover:text-accent transition-colors font-medium">加入我们</a>
+                <button
+                    class="bg-accent hover:bg-amber-500 text-white px-5 py-2 rounded-full transition-all font-medium">
+                    立即行动
+                </button>
             </div>
-            <div class="flex items-center">
-              <div class="w-4 h-4 rounded-full bg-white border border-gray-300 mr-2"></div>
-              <span>白棋: <span id="white-count">0</span></span>
+
+            <!-- 移动端菜单按钮 -->
+            <button id="menuBtn" class="md:hidden text-white text-2xl">
+                <i class="fa fa-bars"></i>
+            </button>
+        </div>
+
+        <!-- 移动端菜单 -->
+        <div id="mobileMenu" class="md:hidden hidden bg-white shadow-lg absolute w-full mt-4">
+            <div class="container mx-auto px-4 py-3 flex flex-col space-y-3">
+                <a href="#facts" class="py-2 text-dark hover:text-primary transition-colors">事实数据</a>
+                <a href="#impact" class="py-2 text-dark hover:text-primary transition-colors">环境影响</a>
+                <a href="#actions" class="py-2 text-dark hover:text-primary transition-colors">行动指南</a>
+                <a href="#join" class="py-2 text-dark hover:text-primary transition-colors">加入我们</a>
+                <button
+                    class="bg-accent hover:bg-amber-500 text-white px-5 py-2 rounded-full transition-all font-medium w-full">
+                    立即行动
+                </button>
             </div>
-          </div>
         </div>
-        
-        <!-- 游戏控制按钮 -->
-        <div class="space-y-3">
-          <button id="restart-btn" class="w-full py-2 px-4 bg-primary text-white rounded-lg hover:bg-accent transition-colors duration-300 flex items-center justify-center">
-            <i class="fa fa-refresh mr-2"></i>重新开始
-          </button>
-          <button id="undo-btn" class="w-full py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-300 flex items-center justify-center">
-            <i class="fa fa-undo mr-2"></i>悔棋
-          </button>
-          <button id="hint-btn" class="w-full py-2 px-4 bg-secondary text-gray-800 rounded-lg hover:bg-opacity-80 transition-colors duration-300 flex items-center justify-center">
-            <i class="fa fa-lightbulb-o mr-2"></i>提示
-          </button>
-        </div>
-      </div>
-      
-      <!-- 棋盘区域 -->
-      <div class="order-1 lg:order-2">
-        <div class="wood-pattern p-4 md:p-6 rounded-2xl shadow-board">
-          <div id="board-container" class="board-container board-texture relative w-[500px] h-[500px] rounded-lg mx-auto">
-            <!-- 棋盘将通过JavaScript动态生成 -->
-          </div>
-        </div>
-        
-        <!-- 游戏说明 -->
-        <div class="mt-6 bg-white p-4 rounded-xl shadow-md">
-          <h3 class="font-bold text-primary mb-2 flex items-center">
-            <i class="fa fa-book mr-2"></i>游戏规则
-          </h3>
-          <p class="text-gray-700 text-sm">黑白双方轮流在棋盘交叉点上落子，先在一条直线（横、竖或斜线）上形成五连子的一方获胜。</p>
-        </div>
-      </div>
-    </div>
-  </main>
+    </nav>
 
-  <!-- 胜利提示模态框 -->
-  <div id="win-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl modal-enter">
-      <div class="text-center">
-        <h2 id="winner-text" class="text-2xl font-bold mb-4 text-primary"></h2>
-        <div id="winner-icon" class="w-16 h-16 rounded-full mx-auto mb-6"></div>
-        <p class="text-gray-600 mb-6">恭喜获胜！再来一局？</p>
-        <button id="new-game-btn" class="bg-primary text-white py-3 px-8 rounded-lg hover:bg-accent transition-colors duration-300 font-medium">
-          开始新游戏
-        </button>
-      </div>
-    </div>
-  </div>
+    <!-- 英雄区域 -->
+    <header class="relative min-h-screen flex items-center justify-center overflow-hidden">
+        <!-- 背景图 -->
+        <div class="absolute inset-0 z-0">
+            <img src="https://picsum.photos/id/1015/1920/1080" alt="地球与自然" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-b from-secondary/80 to-primary/80"></div>
+        </div>
 
-  <!-- 页脚 -->
-  <footer class="bg-primary text-white py-6 mt-12">
-    <div class="container mx-auto px-4 text-center">
-      <p>&copy; 2023 五子棋游戏 | 一个经典的策略棋盘游戏</p>
-      <div class="flex justify-center space-x-4 mt-3">
-        <a href="#" class="hover:text-secondary transition-colors duration-300"><i class="fa fa-github text-xl"></i></a>
-        <a href="#" class="hover:text-secondary transition-colors duration-300"><i class="fa fa-twitter text-xl"></i></a>
-        <a href="#" class="hover:text-secondary transition-colors duration-300"><i class="fa fa-envelope text-xl"></i></a>
-      </div>
-    </div>
-  </footer>
+        <!-- 内容 -->
+        <div class="container mx-auto px-4 z-10 text-center">
+            <h1
+                class="text-[clamp(2.5rem,8vw,5rem)] font-bold text-white leading-tight mb-6 text-shadow animate-fade-in">
+                为了共同的未来<br>减少碳排放
+            </h1>
+            <p class="text-[clamp(1.1rem,3vw,1.5rem)] text-white/90 max-w-3xl mx-auto mb-10 text-shadow">
+                气候变化是全人类面临的共同挑战，每一个行动都能带来改变。加入我们，一起减少碳排放，保护我们唯一的家园。
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#actions"
+                    class="bg-accent hover:bg-amber-500 text-white px-8 py-4 rounded-full text-lg font-medium transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                    了解如何行动
+                </a>
+                <a href="#facts"
+                    class="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border border-white/40 px-8 py-4 rounded-full text-lg font-medium transition-all">
+                    查看事实数据
+                </a>
+            </div>
+        </div>
 
-  <script>
-    // 游戏配置
-    const BOARD_SIZE = 15; // 15x15的棋盘
-    const WINNING_LENGTH = 5; // 连成5子获胜
-    
-    // 游戏状态
-    let gameBoard = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
-    let currentPlayer = 'black'; // 黑棋先行
-    let gameActive = true;
-    let moveHistory = [];
-    let blackCount = 0;
-    let whiteCount = 0;
-    
-    // DOM元素
-    const boardContainer = document.getElementById('board-container');
-    const currentPlayerIndicator = document.getElementById('current-player-indicator');
-    const currentPlayerText = document.getElementById('current-player-text');
-    const gameStatus = document.getElementById('game-status');
-    const blackCountEl = document.getElementById('black-count');
-    const whiteCountEl = document.getElementById('white-count');
-    const restartBtn = document.getElementById('restart-btn');
-    const undoBtn = document.getElementById('undo-btn');
-    const hintBtn = document.getElementById('hint-btn');
-    const winModal = document.getElementById('win-modal');
-    const winnerText = document.getElementById('winner-text');
-    const winnerIcon = document.getElementById('winner-icon');
-    const newGameBtn = document.getElementById('new-game-btn');
-    
-    // 初始化棋盘
-    function initializeBoard() {
-      // 清空棋盘容器
-      boardContainer.innerHTML = '';
-      
-      // 设置网格样式
-      boardContainer.style.display = 'grid';
-      boardContainer.style.gridTemplateColumns = `repeat(${BOARD_SIZE}, 1fr)`;
-      boardContainer.style.gridTemplateRows = `repeat(${BOARD_SIZE}, 1fr)`;
-      
-      // 创建棋盘格子
-      for (let row = 0; row < BOARD_SIZE; row++) {
-        for (let col = 0; col < BOARD_SIZE; col++) {
-          const cell = document.createElement('div');
-          cell.classList.add('grid-cell');
-          cell.dataset.row = row;
-          cell.dataset.col = col;
-          
-          // 添加点击事件
-          cell.addEventListener('click', () => handleCellClick(row, col));
-          
-          // 添加触摸事件（移动设备支持）
-          cell.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // 防止点击事件被触发两次
-            handleCellClick(row, col);
-          });
-          
-          boardContainer.appendChild(cell);
+        <!-- 地球动画 -->
+        <div
+            class="absolute -bottom-20 -right-20 md:bottom-10 md:right-10 w-64 h-64 md:w-96 md:h-96 rounded-full overflow-hidden shadow-2xl animate-float">
+            <img src="https://picsum.photos/id/1024/500/500" alt="地球" class="w-full h-full object-cover earth-rotate">
+        </div>
+
+        <!-- 滚动提示 -->
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
+            <i class="fa fa-angle-down text-3xl"></i>
+        </div>
+    </header>
+
+    <!-- 关键事实部分 -->
+    <section id="facts" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-bold text-dark mb-4">气候变化的关键事实</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">
+                    数据不会说谎。了解碳排放对我们星球的真实影响，是采取行动的第一步。
+                </p>
+            </div>
+
+            <!-- 数据卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- 温度上升 -->
+                <div class="bg-light rounded-xl p-6 shadow-lg border border-gray-100">
+                    <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-5">
+                        <i class="fa fa-thermometer-full text-red-500 text-2xl"></i>
+                    </div>
+                    <h3 class="text-4xl font-bold text-dark mb-2 counter" data-target="1.1">0</h3>
+                    <p class="text-gray-600">自工业革命以来，全球平均气温上升（°C）</p>
+                </div>
+
+                <!-- 碳排放 -->
+                <div class="bg-light rounded-xl p-6 shadow-lg border border-gray-100">
+                    <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-5">
+                        <i class="fa fa-industry text-blue-500 text-2xl"></i>
+                    </div>
+                    <h3 class="text-4xl font-bold text-dark mb-2 counter" data-target="36">0</h3>
+                    <p class="text-gray-600">2022年全球碳排放量（十亿吨CO₂）</p>
+                </div>
+
+                <!-- 冰川融化 -->
+                <div class="bg-light rounded-xl p-6 shadow-lg border border-gray-100">
+                    <div class="w-14 h-14 bg-cyan-100 rounded-full flex items-center justify-center mb-5">
+                        <i class="fa fa-snowflake-o text-cyan-500 text-2xl"></i>
+                    </div>
+                    <h3 class="text-4xl font-bold text-dark mb-2 counter" data-target="30">0</h3>
+                    <p class="text-gray-600">过去50年北极冰盖减少（%）</p>
+                </div>
+
+                <!-- 海平面上升 -->
+                <div class="bg-light rounded-xl p-6 shadow-lg border border-gray-100">
+                    <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-5">
+                        <i class="fa fa-tint text-green-500 text-2xl"></i>
+                    </div>
+                    <h3 class="text-4xl font-bold text-dark mb-2 counter" data-target="20">0</h3>
+                    <p class="text-gray-600">过去一个世纪海平面上升（厘米）</p>
+                </div>
+            </div>
+
+            <!-- 图表部分 -->
+            <div class="mt-20 bg-light rounded-xl p-6 md:p-8 shadow-lg border border-gray-100">
+                <h3 class="text-2xl font-bold mb-6 text-center">全球碳排放趋势 (1960-2022)</h3>
+                <div class="h-80">
+                    <canvas id="emissionsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 环境影响部分 -->
+    <section id="impact" class="py-20 bg-gradient-to-b from-gray-50 to-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-bold text-dark mb-4">碳排放的环境影响</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">
+                    碳排放正在以前所未有的速度改变我们的星球，影响着每一个生命。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div class="order-2 lg:order-1">
+                    <div class="space-y-8">
+                        <!-- 影响1 -->
+                        <div class="flex gap-4">
+                            <div
+                                class="min-w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fa fa-fire text-red-500"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">极端天气事件增加</h3>
+                                <p class="text-gray-600">全球变暖导致热浪、暴雨、飓风等极端天气发生频率和强度显著增加，造成巨大的生命财产损失。</p>
+                            </div>
+                        </div>
+
+                        <!-- 影响2 -->
+                        <div class="flex gap-4">
+                            <div
+                                class="min-w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fa fa-leaf text-yellow-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">生物多样性丧失</h3>
+                                <p class="text-gray-600">气候变化导致全球物种栖息地破坏，据估计，若气温上升2°C，全球约30%的物种可能面临灭绝风险。</p>
+                            </div>
+                        </div>
+
+                        <!-- 影响3 -->
+                        <div class="flex gap-4">
+                            <div
+                                class="min-w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fa fa-tint text-blue-500"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">冰川融化与海平面上升</h3>
+                                <p class="text-gray-600">极地和高山冰川加速融化，导致海平面持续上升，威胁沿海地区数亿人口的生存环境。</p>
+                            </div>
+                        </div>
+
+                        <!-- 影响4 -->
+                        <div class="flex gap-4">
+                            <div
+                                class="min-w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fa fa-cutlery text-purple-500"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold mb-2">粮食安全受威胁</h3>
+                                <p class="text-gray-600">气候变化影响农作物生长周期和产量，可能导致全球粮食价格上涨和粮食短缺，加剧贫困和饥饿问题。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="order-1 lg:order-2 relative">
+                    <img src="https://picsum.photos/id/1019/800/600" alt="气候变化影响"
+                        class="rounded-xl shadow-xl w-full h-auto">
+                    <div
+                        class="absolute -bottom-6 -left-6 bg-accent text-white p-4 rounded-lg shadow-lg animate-pulse-slow hidden md:block">
+                        <p class="font-bold">我们还有时间</p>
+                        <p class="text-sm">立即行动可以改变未来</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 行动指南部分 -->
+    <section id="actions" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-bold text-dark mb-4">我们可以采取的行动</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">
+                    减少碳排放不是一句口号，而是每个人都能参与的具体行动。从点滴做起，汇聚改变的力量。
+                </p>
+            </div>
+
+            <!-- 个人行动 -->
+            <h3 class="text-2xl font-bold mb-8 text-center">个人行动</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+                <!-- 行动1 -->
+                <div class="action-card bg-light rounded-xl overflow-hidden shadow-lg border border-gray-100">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1076/600/400" alt="绿色出行"
+                            class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fa fa-bicycle text-primary"></i>
+                            </div>
+                            <h4 class="text-xl font-bold">绿色出行</h4>
+                        </div>
+                        <p class="text-gray-600 mb-4">优先选择步行、自行车或公共交通，减少私家车使用。若需驾车，可选择新能源汽车或拼车。</p>
+                        <div class="text-sm text-gray-500">
+                            <span class="font-medium text-primary">减碳潜力：</span> 每年可减少约2.4吨二氧化碳排放
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 行动2 -->
+                <div class="action-card bg-light rounded-xl overflow-hidden shadow-lg border border-gray-100">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1060/600/400" alt="节约能源"
+                            class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fa fa-lightbulb-o text-secondary"></i>
+                            </div>
+                            <h4 class="text-xl font-bold">节约能源</h4>
+                        </div>
+                        <p class="text-gray-600 mb-4">使用节能家电，随手关灯，合理设置空调温度，安装太阳能设备，减少能源消耗。</p>
+                        <div class="text-sm text-gray-500">
+                            <span class="font-medium text-primary">减碳潜力：</span> 每年可减少约1.2吨二氧化碳排放
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 行动3 -->
+                <div class="action-card bg-light rounded-xl overflow-hidden shadow-lg border border-gray-100">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1080/600/400" alt="低碳饮食"
+                            class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fa fa-apple text-primary"></i>
+                            </div>
+                            <h4 class="text-xl font-bold">低碳饮食</h4>
+                        </div>
+                        <p class="text-gray-600 mb-4">减少肉类消费，尤其是牛肉，多吃植物性食物，减少食物浪费，选择本地、应季食材。</p>
+                        <div class="text-sm text-gray-500">
+                            <span class="font-medium text-primary">减碳潜力：</span> 每年可减少约0.8吨二氧化碳排放
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 集体行动 -->
+            <h3 class="text-2xl font-bold mb-8 text-center">集体与社会行动</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- 行动4 -->
+                <div class="action-card bg-light rounded-xl overflow-hidden shadow-lg border border-gray-100">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1059/600/400" alt="支持可再生能源"
+                            class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fa fa-sun-o text-amber-500"></i>
+                            </div>
+                            <h4 class="text-xl font-bold">支持可再生能源</h4>
+                        </div>
+                        <p class="text-gray-600 mb-4">倡导并支持太阳能、风能等可再生能源的发展，鼓励企业和政府加大对清洁能源的投资。</p>
+                    </div>
+                </div>
+
+                <!-- 行动5 -->
+                <div class="action-card bg-light rounded-xl overflow-hidden shadow-lg border border-gray-100">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1058/600/400" alt="参与环保组织"
+                            class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fa fa-users text-secondary"></i>
+                            </div>
+                            <h4 class="text-xl font-bold">参与环保组织</h4>
+                        </div>
+                        <p class="text-gray-600 mb-4">加入环保组织，参与植树造林、清洁行动等志愿活动，集体发声推动政策变革。</p>
+                    </div>
+                </div>
+
+                <!-- 行动6 -->
+                <div class="action-card bg-light rounded-xl overflow-hidden shadow-lg border border-gray-100">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/id/1071/600/400" alt="倡导政策变革"
+                            class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                <i class="fa fa-gavel text-purple-500"></i>
+                            </div>
+                            <h4 class="text-xl font-bold">倡导政策变革</h4>
+                        </div>
+                        <p class="text-gray-600 mb-4">向政策制定者表达对气候行动的支持，推动更严格的环保法规和碳定价机制的建立。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 减碳进度条 -->
+            <div class="mt-16 bg-light rounded-xl p-8 shadow-lg border border-gray-100">
+                <h3 class="text-2xl font-bold mb-6 text-center">全球减碳目标进度</h3>
+                <div class="space-y-6">
+                    <!-- 目标1 -->
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span class="font-medium">将全球温升控制在1.5°C以内</span>
+                            <span class="text-primary font-bold">35%</span>
+                        </div>
+                        <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-primary progress-bar" style="width: 35%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 目标2 -->
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span class="font-medium">到2030年全球碳排放减少45%</span>
+                            <span class="text-yellow-500 font-bold">12%</span>
+                        </div>
+                        <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-yellow-500 progress-bar" style="width: 12%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 目标3 -->
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <span class="font-medium">到2050年实现碳中和</span>
+                            <span class="text-red-500 font-bold">8%</span>
+                        </div>
+                        <div class="h-4 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-red-500 progress-bar" style="width: 8%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 加入我们部分 -->
+    <section id="join" class="py-20 bg-gradient-hero text-white">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto text-center">
+                <h2 class="text-[clamp(1.8rem,5vw,3rem)] font-bold mb-6">加入全球减碳行动</h2>
+                <p class="text-white/90 text-lg mb-10 max-w-2xl mx-auto">
+                    个人的力量或许微小，但当我们团结起来，就能创造巨大的改变。现在就加入我们，成为解决气候变化问题的一份子。
+                </p>
+            </div>
+        </div>
+        </div>
+    </section>
+
+    <!-- JavaScript -->
+    <script>
+        // 导航栏滚动效果
+        const navbar = document.getElementById('navbar');
+        const scrollIndicator = document.getElementById('scrollIndicator');
+
+        window.addEventListener('scroll', function () {
+            // 导航栏效果
+            if (window.scrollY > 100) {
+                navbar.classList.add('navbar-scrolled');
+                // 改变导航文字颜色
+                const navLinks = navbar.querySelectorAll('a:not(.bg-accent)');
+                navLinks.forEach(link => {
+                    link.classList.remove('text-white');
+                    link.classList.add('text-dark');
+                });
+                const logoText = navbar.querySelector('.text-white');
+                if (logoText) {
+                    logoText.classList.remove('text-white');
+                    logoText.classList.add('text-dark');
+                }
+            } else {
+                navbar.classList.remove('navbar-scrolled');
+                // 恢复导航文字颜色
+                const navLinks = navbar.querySelectorAll('a:not(.bg-accent)');
+                navLinks.forEach(link => {
+                    link.classList.add('text-white');
+                    link.classList.remove('text-dark');
+                });
+                const logoText = navbar.querySelector('.text-dark');
+                if (logoText) {
+                    logoText.classList.remove('text-dark');
+                    logoText.classList.add('text-white');
+                }
+            }
+
+            // 滚动进度指示器
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            scrollIndicator.style.width = scrolled + "%";
+
+            // 触发数字计数动画
+            animateCounters();
+        });
+
+        // 移动端菜单
+        const menuBtn = document.getElementById('menuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+
+        menuBtn.addEventListener('click', function () {
+            mobileMenu.classList.toggle('hidden');
+            const icon = menuBtn.querySelector('i');
+            if (mobileMenu.classList.contains('hidden')) {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            } else {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            }
+        });
+
+        // 数字计数动画
+        function animateCounters() {
+            const counters = document.querySelectorAll('.counter');
+            counters.forEach(counter => {
+                const target = +counter.getAttribute('data-target');
+                const count = +counter.innerText;
+
+                // 检查元素是否在视口中
+                const rect = counter.getBoundingClientRect();
+                const isVisible = rect.top < window.innerHeight && rect.bottom >= 0;
+
+                if (isVisible && count < target) {
+                    const increment = target / 20;
+                    counter.innerText = Math.ceil(count + increment);
+                    setTimeout(() => animateCounters(), 50);
+                } else if (count >= target) {
+                    counter.innerText = target;
+                }
+            });
         }
-      }
-      
-      // 添加棋盘标记点（天元和星位）
-      const markPositions = [
-        {row: 3, col: 3},
-        {row: 3, col: 11},
-        {row: 7, col: 7},  // 天元
-        {row: 11, col: 3},
-        {row: 11, col: 11}
-      ];
-      
-      markPositions.forEach(pos => {
-        const mark = document.createElement('div');
-        mark.classList.add('board-mark');
-        mark.style.top = `${(pos.row / (BOARD_SIZE - 1)) * 100}%`;
-        mark.style.left = `${(pos.col / (BOARD_SIZE - 1)) * 100}%`;
-        boardContainer.appendChild(mark);
-      });
-    }
-    
-    // 处理格子点击
-    function handleCellClick(row, col) {
-      // 检查是否可以落子
-      if (!gameActive || gameBoard[row][col] !== null) {
-        return;
-      }
-      
-      // 落子
-      placePiece(row, col);
-      
-      // 检查是否获胜
-      if (checkWin(row, col, currentPlayer)) {
-        gameActive = false;
-        highlightWinningPieces();
-        showWinModal(currentPlayer);
-        gameStatus.textContent = `${currentPlayer === 'black' ? '黑方' : '白方'}获胜！`;
-        return;
-      }
-      
-      // 检查是否平局
-      if (checkDraw()) {
-        gameActive = false;
-        gameStatus.textContent = '平局！';
-        return;
-      }
-      
-      // 切换玩家
-      switchPlayer();
-    }
-    
-    // 落子
-    function placePiece(row, col) {
-      // 更新游戏数据
-      gameBoard[row][col] = currentPlayer;
-      moveHistory.push({row, col, player: currentPlayer});
-      
-      // 更新计数
-      if (currentPlayer === 'black') {
-        blackCount++;
-        blackCountEl.textContent = blackCount;
-      } else {
-        whiteCount++;
-        whiteCountEl.textContent = whiteCount;
-      }
-      
-      // 创建棋子元素
-      const cell = boardContainer.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-      cell.classList.add('has-piece');
-      
-      const piece = document.createElement('div');
-      piece.classList.add('piece', currentPlayer, 'piece-transition');
-      
-      // 根据棋盘大小计算棋子大小
-      const pieceSize = Math.min(
-        boardContainer.clientWidth / BOARD_SIZE * 0.8,
-        boardContainer.clientHeight / BOARD_SIZE * 0.8
-      );
-      
-      piece.style.width = `${pieceSize}px`;
-      piece.style.height = `${pieceSize}px`;
-      
-      // 添加棋子到格子
-      cell.appendChild(piece);
-      
-      // 添加放置动画
-      setTimeout(() => {
-        piece.classList.add('piece-hover');
-        setTimeout(() => {
-          piece.classList.remove('piece-hover');
-        }, 200);
-      }, 10);
-    }
-    
-    // 切换玩家
-    function switchPlayer() {
-      currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
-      
-      // 更新UI
-      currentPlayerIndicator.className = `w-6 h-6 rounded-full mr-3 ${currentPlayer}`;
-      currentPlayerText.textContent = `${currentPlayer === 'black' ? '黑方' : '白方'}行棋`;
-    }
-    
-    // 检查胜利
-    function checkWin(row, col, player) {
-      const directions = [
-        [0, 1],   // 水平
-        [1, 0],   // 垂直
-        [1, 1],   // 对角线 \
-        [1, -1]   // 对角线 /
-      ];
-      
-      for (const [dx, dy] of directions) {
-        let count = 1; // 当前位置已经有一个棋子
-        
-        // 正方向检查
-        for (let i = 1; i < WINNING_LENGTH; i++) {
-          const newRow = row + i * dx;
-          const newCol = col + i * dy;
-          
-          if (
-            newRow >= 0 && newRow < BOARD_SIZE &&
-            newCol >= 0 && newCol < BOARD_SIZE &&
-            gameBoard[newRow][newCol] === player
-          ) {
-            count++;
-          } else {
-            break;
-          }
-        }
-        
-        // 反方向检查
-        for (let i = 1; i < WINNING_LENGTH; i++) {
-          const newRow = row - i * dx;
-          const newCol = col - i * dy;
-          
-          if (
-            newRow >= 0 && newRow < BOARD_SIZE &&
-            newCol >= 0 && newCol < BOARD_SIZE &&
-            gameBoard[newRow][newCol] === player
-          ) {
-            count++;
-          } else {
-            break;
-          }
-        }
-        
-        // 检查是否达到获胜条件
-        if (count >= WINNING_LENGTH) {
-          return true;
-        }
-      }
-      
-      return false;
-    }
-    
-    // 高亮显示获胜的棋子
-    function highlightWinningPieces() {
-      const lastMove = moveHistory[moveHistory.length - 1];
-      const {row, col, player} = lastMove;
-      
-      const directions = [
-        [0, 1],   // 水平
-        [1, 0],   // 垂直
-        [1, 1],   // 对角线 \
-        [1, -1]   // 对角线 /
-      ];
-      
-      for (const [dx, dy] of directions) {
-        let winningPieces = [{row, col}];
-        
-        // 正方向检查
-        for (let i = 1; i < WINNING_LENGTH; i++) {
-          const newRow = row + i * dx;
-          const newCol = col + i * dy;
-          
-          if (
-            newRow >= 0 && newRow < BOARD_SIZE &&
-            newCol >= 0 && newCol < BOARD_SIZE &&
-            gameBoard[newRow][newCol] === player
-          ) {
-            winningPieces.push({row: newRow, col: newCol});
-          } else {
-            break;
-          }
-        }
-        
-        // 反方向检查
-        for (let i = 1; i < WINNING_LENGTH; i++) {
-          const newRow = row - i * dx;
-          const newCol = col - i * dy;
-          
-          if (
-            newRow >= 0 && newRow < BOARD_SIZE &&
-            newCol >= 0 && newCol < BOARD_SIZE &&
-            gameBoard[newRow][newCol] === player
-          ) {
-            winningPieces.push({row: newRow, col: newCol});
-          } else {
-            break;
-          }
-        }
-        
-        // 如果找到获胜的连线，高亮这些棋子
-        if (winningPieces.length >= WINNING_LENGTH) {
-          winningPieces.forEach(pos => {
-            const cell = boardContainer.querySelector(`[data-row="${pos.row}"][data-col="${pos.col}"]`);
-            const piece = cell.querySelector('.piece');
-            piece.classList.add('winning-piece');
-          });
-          break;
-        }
-      }
-    }
-    
-    // 检查平局
-    function checkDraw() {
-      return moveHistory.length === BOARD_SIZE * BOARD_SIZE;
-    }
-    
-    // 重新开始游戏
-    function restartGame() {
-      // 重置游戏状态
-      gameBoard = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
-      currentPlayer = 'black';
-      gameActive = true;
-      moveHistory = [];
-      blackCount = 0;
-      whiteCount = 0;
-      
-      // 更新UI
-      initializeBoard();
-      currentPlayerIndicator.className = 'w-6 h-6 rounded-full bg-black mr-3';
-      currentPlayerText.textContent = '黑方行棋';
-      gameStatus.textContent = '游戏进行中';
-      blackCountEl.textContent = '0';
-      whiteCountEl.textContent = '0';
-      winModal.classList.add('hidden');
-    }
-    
-    // 悔棋
-    function undoMove() {
-      if (moveHistory.length === 0 || !gameActive) {
-        return;
-      }
-      
-      // 获取最后一步棋
-      const lastMove = moveHistory.pop();
-      const {row, col, player} = lastMove;
-      
-      // 更新游戏数据
-      gameBoard[row][col] = null;
-      
-      // 更新计数
-      if (player === 'black') {
-        blackCount--;
-        blackCountEl.textContent = blackCount;
-      } else {
-        whiteCount--;
-        whiteCountEl.textContent = whiteCount;
-      }
-      
-      // 从UI移除棋子
-      const cell = boardContainer.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-      cell.classList.remove('has-piece');
-      const piece = cell.querySelector('.piece');
-      if (piece) {
-        cell.removeChild(piece);
-      }
-      
-      // 切换回上一个玩家
-      switchPlayer();
-    }
-    
-    // 显示提示
-    function showHint() {
-      if (!gameActive) return;
-      
-      // 简单的提示算法：检查是否有能形成四子的位置
-      for (let row = 0; row < BOARD_SIZE; row++) {
-        for (let col = 0; col < BOARD_SIZE; col++) {
-          if (gameBoard[row][col] !== null) continue;
-          
-          // 模拟当前玩家落子
-          gameBoard[row][col] = currentPlayer;
-          const isWinningMove = checkWin(row, col, currentPlayer);
-          gameBoard[row][col] = null;
-          
-          if (isWinningMove) {
-            highlightHint(row, col);
-            return;
-          }
-        }
-      }
-      
-      // 如果没有 winning move，检查对手是否有 winning move
-      const opponent = currentPlayer === 'black' ? 'white' : 'black';
-      for (let row = 0; row < BOARD_SIZE; row++) {
-        for (let col = 0; col < BOARD_SIZE; col++) {
-          if (gameBoard[row][col] !== null) continue;
-          
-          // 模拟对手落子
-          gameBoard[row][col] = opponent;
-          const isOpponentWinning = checkWin(row, col, opponent);
-          gameBoard[row][col] = null;
-          
-          if (isOpponentWinning) {
-            highlightHint(row, col);
-            return;
-          }
-        }
-      }
-      
-      // 如果没有紧迫情况，随机推荐一个位置
-      const emptyCells = [];
-      for (let row = 0; row < BOARD_SIZE; row++) {
-        for (let col = 0; col < BOARD_SIZE; col++) {
-          if (gameBoard[row][col] === null) {
-            emptyCells.push({row, col});
-          }
-        }
-      }
-      
-      if (emptyCells.length > 0) {
-        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-        highlightHint(randomCell.row, randomCell.col);
-      }
-    }
-    
-    // 高亮提示位置
-    function highlightHint(row, col) {
-      const cell = boardContainer.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-      cell.classList.add('bg-yellow-200');
-      
-      setTimeout(() => {
-        cell.classList.remove('bg-yellow-200');
-      }, 1500);
-    }
-    
-    // 显示胜利模态框
-    function showWinModal(winner) {
-      winnerText.textContent = `${winner === 'black' ? '黑方' : '白方'}获胜！`;
-      winnerIcon.className = `w-16 h-16 rounded-full mx-auto mb-6 ${winner}`;
-      
-      // 显示模态框并添加动画
-      winModal.classList.remove('hidden');
-      const modalContent = winModal.querySelector('div');
-      modalContent.classList.remove('modal-enter-active');
-      void modalContent.offsetWidth; // 触发重绘
-      modalContent.classList.add('modal-enter-active');
-    }
-    
-    // 事件监听
-    restartBtn.addEventListener('click', restartGame);
-    undoBtn.addEventListener('click', undoMove);
-    hintBtn.addEventListener('click', showHint);
-    newGameBtn.addEventListener('click', restartGame);
-    
-    // 窗口大小变化时重新计算棋子大小
-    window.addEventListener('resize', () => {
-      const pieces = document.querySelectorAll('.piece');
-      const pieceSize = Math.min(
-        boardContainer.clientWidth / BOARD_SIZE * 0.8,
-        boardContainer.clientHeight / BOARD_SIZE * 0.8
-      );
-      
-      pieces.forEach(piece => {
-        piece.style.width = `${pieceSize}px`;
-        piece.style.height = `${pieceSize}px`;
-      });
-    });
-    
-    // 初始化游戏
-    initializeBoard();
-  </script>
+
+        // 碳排放图表
+        const ctx = document.getElementById('emissionsChart').getContext('2d');
+        const emissionsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['1960', '1970', '1980', '1990', '2000', '2010', '2020', '2022'],
+                datasets: [{
+                    label: '全球碳排放量（十亿吨CO₂）',
+                    data: [15, 19, 22, 24, 29, 33, 34, 36],
+                    borderColor: '#0369A1',
+                    backgroundColor: 'rgba(3, 105, 161, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#0F766E',
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '十亿吨CO₂'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '年份'
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+
+        // 表单提交处理
+        const submitBtn = document.querySelector('button[type="button"]');
+        submitBtn.addEventListener('click', function () {
+            const nameInput = document.getElementById('name');
+            if (nameInput.value.trim() === '') {
+                alert('请输入你的名字');
+                return;
+            }
+
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) {
+                alert('请至少选择一项你承诺采取的行动');
+                return;
+            }
+
+            alert(`感谢 ${nameInput.value} 的承诺！你的行动将为地球带来积极影响。`);
+            // 在实际应用中，这里会发送表单数据到服务器
+        });
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', function () {
+            // 触发一次滚动事件以设置初始状态
+            window.dispatchEvent(new Event('scroll'));
+        });
+    </script>
 </body>
+
 </html>
